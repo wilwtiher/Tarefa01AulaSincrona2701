@@ -10,9 +10,9 @@
 #define WS2812_PIN 7
 
 // Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
-uint8_t led_r = 33; // Intensidade do vermelho
-uint8_t led_g = 33; // Intensidade do verde
-uint8_t led_b = 33; // Intensidade do azul
+uint8_t led_r = 20; // Intensidade do vermelho
+uint8_t led_g = 20; // Intensidade do verde
+uint8_t led_b = 20; // Intensidade do azul
 
 // Configurações dos pinos 
 const uint led_pin = 13;    //Red=13, Blue=12, Green=11
@@ -26,136 +26,77 @@ static volatile int contador = 0;
 
 
 // Buffer para armazenar quais LEDs serao ligados na matriz de acordo com a variavel contador
-bool led_buffers[10][NUM_PIXELS] = {
-    { // 0 original:
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 1,  
-      // 1, 0, 0, 0, 1,  
-      // 1, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 0
-      // Linhas 0,2 e 4 invertidas (horizontalmente)
-        0, 1, 1, 1, 0,  // (invertida de 0,1,1,1,0 → continua igual)
-        1, 0, 0, 0, 1,  // sem alteração
-        1, 0, 0, 0, 1,  // (inverter: 1,0,0,0,1 → 1,0,0,0,1)
-        1, 0, 0, 0, 1,  // sem alteração
-        0, 1, 1, 1, 0   // (inverter: 0,1,1,1,0 → 0,1,1,1,0)
+bool led_buffer[10][NUM_PIXELS] = {
+    { // 0 invertido verticalmente:
+      // Nova ordem: linha4, linha3, linha2, linha1, linha0
+        0, 1, 1, 1, 0,   // antiga linha4
+        1, 0, 0, 0, 1,   // antiga linha3
+        1, 0, 0, 0, 1,   // antiga linha2
+        1, 0, 0, 0, 1,   // antiga linha1
+        0, 1, 1, 1, 0    // antiga linha0
     },
-    { // 1 original:
-      // 0, 0, 1, 0, 0,  
-      // 0, 1, 1, 0, 0,  
-      // 0, 0, 1, 0, 0,  
-      // 0, 0, 1, 0, 0,  
-      // 0, 1, 1, 1, 0
-        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
-        0, 1, 1, 0, 0,  // sem alteração
-        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
-        0, 0, 1, 0, 0,  // sem alteração
-        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
+    { // 1 invertido verticalmente:
+        0, 1, 1, 1, 0,   // antiga linha4
+        0, 0, 1, 0, 0,   // antiga linha3
+        0, 0, 1, 0, 0,   // antiga linha2
+        0, 1, 1, 0, 0,   // antiga linha1
+        0, 0, 1, 0, 0    // antiga linha0
     },
-    { // 2 original:
-      // 1, 1, 1, 1, 1,  
-      // 0, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 0,  
-      // 1, 1, 1, 1, 1
-        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
-        0, 0, 0, 0, 1,  // sem alteração
-        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
-        1, 0, 0, 0, 0,  // sem alteração
-        1, 1, 1, 1, 1   // invertida → 1,1,1,1,1
+    { // 2 invertido verticalmente:
+        1, 1, 1, 1, 1,   // antiga linha4
+        1, 0, 0, 0, 0,   // antiga linha3
+        0, 1, 1, 1, 0,   // antiga linha2
+        0, 0, 0, 0, 1,   // antiga linha1
+        1, 1, 1, 1, 1    // antiga linha0
     },
-    { // 3 original:
-      // 1, 1, 1, 1, 1,  
-      // 0, 0, 0, 0, 1,  
-      // 0, 0, 1, 1, 1,  
-      // 0, 0, 0, 0, 1,  
-      // 1, 1, 1, 1, 1
-        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
-        0, 0, 0, 0, 1,  // sem alteração
-      // Linha 2: original [0, 0, 1, 1, 1] invertida vira [1, 1, 1, 0, 0]
-        1, 1, 1, 0, 0,  
-        0, 0, 0, 0, 1,  // sem alteração
-        1, 1, 1, 1, 1   // invertida → 1,1,1,1,1
+    { // 3 invertido verticalmente:
+        1, 1, 1, 1, 1,   // antiga linha4
+        0, 0, 0, 0, 1,   // antiga linha3
+        1, 1, 1, 0, 0,   // antiga linha2
+        0, 0, 0, 0, 1,   // antiga linha1
+        1, 1, 1, 1, 1    // antiga linha0
     },
-    { // 4 original:
-      // 0, 0, 1, 0, 0,  
-      // 0, 1, 1, 0, 0,  
-      // 1, 0, 1, 0, 0,  
-      // 1, 1, 1, 1, 1,  
-      // 0, 0, 1, 0, 0
-        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
-        0, 1, 1, 0, 0,  // sem alteração
-      // Linha 2: original [1, 0, 1, 0, 0] invertida vira [0, 0, 1, 0, 1]
-        0, 0, 1, 0, 1,  
-        1, 1, 1, 1, 1,  // sem alteração (linha 3 permanece)
-        0, 0, 1, 0, 0   // invertida → 0,0,1,0,0
+    { // 4 invertido verticalmente:
+        0, 0, 1, 0, 0,   // antiga linha4
+        1, 1, 1, 1, 1,   // antiga linha3
+        0, 0, 1, 0, 1,   // antiga linha2
+        0, 1, 1, 0, 0,   // antiga linha1
+        0, 0, 1, 0, 0    // antiga linha0
     },
-    { // 5 original:
-      // 1, 1, 1, 1, 1,  
-      // 1, 0, 0, 0, 0,  
-      // 1, 1, 1, 0, 0,  
-      // 0, 0, 0, 1, 0,  
-      // 1, 1, 1, 0, 0
-        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
-        1, 0, 0, 0, 0,  // sem alteração
-      // Linha 2: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
-        0, 0, 1, 1, 1,  
-        0, 0, 0, 1, 0,  // sem alteração
-      // Linha 4: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
-        0, 0, 1, 1, 1
+    { // 5 invertido verticalmente:
+        0, 0, 1, 1, 1,   // antiga linha4
+        0, 0, 0, 1, 0,   // antiga linha3
+        0, 0, 1, 1, 1,   // antiga linha2
+        1, 0, 0, 0, 0,   // antiga linha1
+        1, 1, 1, 1, 1    // antiga linha0
     },
-    { // 6 original:
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 0,  
-      // 1, 1, 1, 0, 0,  
-      // 1, 0, 0, 1, 0,  
-      // 0, 1, 1, 0, 0
-        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
-        1, 0, 0, 0, 0,  // sem alteração
-      // Linha 2: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
-        0, 0, 1, 1, 1,  
-        1, 0, 0, 1, 0,  // sem alteração
-      // Linha 4: [0, 1, 1, 0, 0] invertida vira [0,0,1,1,0]
-        0, 0, 1, 1, 0
+    { // 6 invertido verticalmente:
+        0, 0, 1, 1, 0,   // antiga linha4
+        1, 0, 0, 1, 0,   // antiga linha3
+        0, 0, 1, 1, 1,   // antiga linha2
+        1, 0, 0, 0, 0,   // antiga linha1
+        0, 1, 1, 1, 0    // antiga linha0
     },
-    { // 7 original:
-      // 1, 1, 1, 1, 1,  
-      // 0, 0, 0, 1, 0,  
-      // 0, 0, 1, 0, 0,  
-      // 0, 1, 0, 0, 0,  
-      // 1, 0, 0, 0, 0
-        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
-        0, 0, 0, 1, 0,  // sem alteração
-      // Linha 2: [0, 0, 1, 0, 0] invertida → [0,0,1,0,0]
-        0, 0, 1, 0, 0,  
-        0, 1, 0, 0, 0,  // sem alteração
-      // Linha 4: [1, 0, 0, 0, 0] invertida → [0,0,0,0,1]
-        0, 0, 0, 0, 1
+    { // 7 invertido verticalmente:
+        0, 0, 0, 0, 1,   // antiga linha4
+        0, 1, 0, 0, 0,   // antiga linha3
+        0, 0, 1, 0, 0,   // antiga linha2
+        0, 0, 0, 1, 0,   // antiga linha1
+        1, 1, 1, 1, 1    // antiga linha0
     },
-    { // 8 original:
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 0
-        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
-        1, 0, 0, 0, 1,  // sem alteração
-        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
-        1, 0, 0, 0, 1,  // sem alteração
-        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
+    { // 8 invertido verticalmente:
+        0, 1, 1, 1, 0,   // antiga linha4
+        1, 0, 0, 0, 1,   // antiga linha3
+        0, 1, 1, 1, 0,   // antiga linha2
+        1, 0, 0, 0, 1,   // antiga linha1
+        0, 1, 1, 1, 0    // antiga linha0
     },
-    { // 9 original:
-      // 0, 1, 1, 1, 0,  
-      // 1, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 1,  
-      // 0, 0, 0, 0, 1,  
-      // 0, 1, 1, 1, 0
-        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
-        1, 0, 0, 0, 1,  // sem alteração
-      // Linha 2: [0, 1, 1, 1, 1] invertida vira [1,1,1,1,0]
-        1, 1, 1, 1, 0,  
-        0, 0, 0, 0, 1,  // sem alteração
-        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
+    { // 9 invertido verticalmente:
+        0, 1, 1, 1, 0,   // antiga linha4
+        0, 0, 0, 0, 1,   // antiga linha3
+        1, 1, 1, 1, 0,   // antiga linha2
+        1, 0, 0, 0, 1,   // antiga linha1
+        0, 1, 1, 1, 0    // antiga linha0
     }
 };
 
