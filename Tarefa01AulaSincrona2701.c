@@ -10,9 +10,9 @@
 #define WS2812_PIN 7
 
 // Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
-uint8_t led_r = 50; // Intensidade do vermelho
-uint8_t led_g = 50; // Intensidade do verde
-uint8_t led_b = 50; // Intensidade do azul
+uint8_t led_r = 33; // Intensidade do vermelho
+uint8_t led_g = 33; // Intensidade do verde
+uint8_t led_b = 33; // Intensidade do azul
 
 // Configurações dos pinos 
 const uint led_pin = 13;    //Red=13, Blue=12, Green=11
@@ -26,76 +26,136 @@ static volatile int contador = 0;
 
 
 // Buffer para armazenar quais LEDs serao ligados na matriz de acordo com a variavel contador
-bool led_buffer[10][NUM_PIXELS] = {
-    { // 0
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 1,  
-        1, 0, 0, 0, 1,  
-        1, 0, 0, 0, 1,  
-        0, 1, 1, 1, 0
+bool led_buffers[10][NUM_PIXELS] = {
+    { // 0 original:
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 1,  
+      // 1, 0, 0, 0, 1,  
+      // 1, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 0
+      // Linhas 0,2 e 4 invertidas (horizontalmente)
+        0, 1, 1, 1, 0,  // (invertida de 0,1,1,1,0 → continua igual)
+        1, 0, 0, 0, 1,  // sem alteração
+        1, 0, 0, 0, 1,  // (inverter: 1,0,0,0,1 → 1,0,0,0,1)
+        1, 0, 0, 0, 1,  // sem alteração
+        0, 1, 1, 1, 0   // (inverter: 0,1,1,1,0 → 0,1,1,1,0)
     },
-    { // 1
-        0, 0, 1, 0, 0,  
-        0, 1, 1, 0, 0,  
-        0, 0, 1, 0, 0,  
-        0, 0, 1, 0, 0,  
-        0, 1, 1, 1, 0
+    { // 1 original:
+      // 0, 0, 1, 0, 0,  
+      // 0, 1, 1, 0, 0,  
+      // 0, 0, 1, 0, 0,  
+      // 0, 0, 1, 0, 0,  
+      // 0, 1, 1, 1, 0
+        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
+        0, 1, 1, 0, 0,  // sem alteração
+        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
+        0, 0, 1, 0, 0,  // sem alteração
+        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
     },
-    { // 2
-        1, 1, 1, 1, 1,  
-        0, 0, 0, 0, 1,  
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 0,  
-        1, 1, 1, 1, 1
+    { // 2 original:
+      // 1, 1, 1, 1, 1,  
+      // 0, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 0,  
+      // 1, 1, 1, 1, 1
+        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
+        0, 0, 0, 0, 1,  // sem alteração
+        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
+        1, 0, 0, 0, 0,  // sem alteração
+        1, 1, 1, 1, 1   // invertida → 1,1,1,1,1
     },
-    { // 3
-        1, 1, 1, 1, 1,  
-        0, 0, 0, 0, 1,  
+    { // 3 original:
+      // 1, 1, 1, 1, 1,  
+      // 0, 0, 0, 0, 1,  
+      // 0, 0, 1, 1, 1,  
+      // 0, 0, 0, 0, 1,  
+      // 1, 1, 1, 1, 1
+        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
+        0, 0, 0, 0, 1,  // sem alteração
+      // Linha 2: original [0, 0, 1, 1, 1] invertida vira [1, 1, 1, 0, 0]
+        1, 1, 1, 0, 0,  
+        0, 0, 0, 0, 1,  // sem alteração
+        1, 1, 1, 1, 1   // invertida → 1,1,1,1,1
+    },
+    { // 4 original:
+      // 0, 0, 1, 0, 0,  
+      // 0, 1, 1, 0, 0,  
+      // 1, 0, 1, 0, 0,  
+      // 1, 1, 1, 1, 1,  
+      // 0, 0, 1, 0, 0
+        0, 0, 1, 0, 0,  // invertida → 0,0,1,0,0
+        0, 1, 1, 0, 0,  // sem alteração
+      // Linha 2: original [1, 0, 1, 0, 0] invertida vira [0, 0, 1, 0, 1]
+        0, 0, 1, 0, 1,  
+        1, 1, 1, 1, 1,  // sem alteração (linha 3 permanece)
+        0, 0, 1, 0, 0   // invertida → 0,0,1,0,0
+    },
+    { // 5 original:
+      // 1, 1, 1, 1, 1,  
+      // 1, 0, 0, 0, 0,  
+      // 1, 1, 1, 0, 0,  
+      // 0, 0, 0, 1, 0,  
+      // 1, 1, 1, 0, 0
+        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
+        1, 0, 0, 0, 0,  // sem alteração
+      // Linha 2: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
         0, 0, 1, 1, 1,  
-        0, 0, 0, 0, 1,  
-        1, 1, 1, 1, 1
+        0, 0, 0, 1, 0,  // sem alteração
+      // Linha 4: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
+        0, 0, 1, 1, 1
     },
-    { // 4
+    { // 6 original:
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 0,  
+      // 1, 1, 1, 0, 0,  
+      // 1, 0, 0, 1, 0,  
+      // 0, 1, 1, 0, 0
+        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
+        1, 0, 0, 0, 0,  // sem alteração
+      // Linha 2: [1, 1, 1, 0, 0] invertida vira [0, 0, 1, 1, 1]
+        0, 0, 1, 1, 1,  
+        1, 0, 0, 1, 0,  // sem alteração
+      // Linha 4: [0, 1, 1, 0, 0] invertida vira [0,0,1,1,0]
+        0, 0, 1, 1, 0
+    },
+    { // 7 original:
+      // 1, 1, 1, 1, 1,  
+      // 0, 0, 0, 1, 0,  
+      // 0, 0, 1, 0, 0,  
+      // 0, 1, 0, 0, 0,  
+      // 1, 0, 0, 0, 0
+        1, 1, 1, 1, 1,  // invertida → 1,1,1,1,1
+        0, 0, 0, 1, 0,  // sem alteração
+      // Linha 2: [0, 0, 1, 0, 0] invertida → [0,0,1,0,0]
         0, 0, 1, 0, 0,  
-        0, 1, 1, 0, 0,  
-        1, 0, 1, 0, 0,  
-        1, 1, 1, 1, 1,  
-        0, 0, 1, 0, 0
+        0, 1, 0, 0, 0,  // sem alteração
+      // Linha 4: [1, 0, 0, 0, 0] invertida → [0,0,0,0,1]
+        0, 0, 0, 0, 1
     },
-    { // 5
-        1, 1, 1, 1, 1,  
-        1, 0, 0, 0, 0,  
-        1, 1, 1, 0, 0,  
-        0, 0, 0, 1, 0,  
-        1, 1, 1, 0, 0
+    { // 8 original:
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 0
+        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
+        1, 0, 0, 0, 1,  // sem alteração
+        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
+        1, 0, 0, 0, 1,  // sem alteração
+        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
     },
-    { // 6
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 0,  
-        1, 1, 1, 0, 0,  
-        1, 0, 0, 1, 0,  
-        0, 1, 1, 0, 0
-    },
-    { // 7
-        1, 1, 1, 1, 1,  
-        0, 0, 0, 1, 0,  
-        0, 0, 1, 0, 0,  
-        0, 1, 0, 0, 0,  
-        1, 0, 0, 0, 0
-    },
-    { // 8
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 1,  
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 1,  
-        0, 1, 1, 1, 0
-    },
-    { // 9
-        0, 1, 1, 1, 0,  
-        1, 0, 0, 0, 1,  
-        0, 1, 1, 1, 1,  
-        0, 0, 0, 0, 1,  
-        0, 1, 1, 1, 0
+    { // 9 original:
+      // 0, 1, 1, 1, 0,  
+      // 1, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 1,  
+      // 0, 0, 0, 0, 1,  
+      // 0, 1, 1, 1, 0
+        0, 1, 1, 1, 0,  // invertida → 0,1,1,1,0
+        1, 0, 0, 0, 1,  // sem alteração
+      // Linha 2: [0, 1, 1, 1, 1] invertida vira [1,1,1,1,0]
+        1, 1, 1, 1, 0,  
+        0, 0, 0, 0, 1,  // sem alteração
+        0, 1, 1, 1, 0   // invertida → 0,1,1,1,0
     }
 };
 
@@ -131,8 +191,8 @@ void set_one_led(uint8_t r, uint8_t g, uint8_t b)
 
 
 // Prototipo da função de interrupção
-static void gpio_irq_handlerA(uint gpio, uint32_t events);
-static void gpio_irq_handlerB(uint gpio, uint32_t events);
+static void gpio_irq_handler(uint gpio, uint32_t events);
+//static void gpio_irq_handlerB(uint gpio, uint32_t events);
 
 int main()
 {
@@ -152,8 +212,8 @@ int main()
     ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, IS_RGBW);
 
     // Configuração da interrupção com callback
-    gpio_set_irq_enabled_with_callback(botao_pinA, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handlerA);
-    gpio_set_irq_enabled_with_callback(botao_pinB, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handlerB);
+    gpio_set_irq_enabled_with_callback(botao_pinA, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+//    gpio_set_irq_enabled_with_callback(botao_pinB, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handlerB);
 
     while (true) {
         gpio_put(led_pin, true);
@@ -162,13 +222,14 @@ int main()
         sleep_ms(100);
     }
 }
-void gpio_irq_handlerA(uint gpio, uint32_t events)
+void gpio_irq_handler(uint gpio, uint32_t events)
 {
     // Obtém o tempo atual em microssegundos
     uint32_t current_time = to_us_since_boot(get_absolute_time());
     // Verifica se passou tempo suficiente desde o último evento
     if (current_time - last_time > 200000) // 200 ms de debouncing
     {
+        printf("Contador = %d\n", contador);
         last_time = current_time; // Atualiza o tempo do último evento
         contador++;
         if(contador > 9){
@@ -179,6 +240,7 @@ void gpio_irq_handlerA(uint gpio, uint32_t events)
         a++;                                   // incrementa a variavel de verificação
     }
 }
+/*
 void gpio_irq_handlerB(uint gpio, uint32_t events)
 {
     // Obtém o tempo atual em microssegundos
@@ -196,3 +258,4 @@ void gpio_irq_handlerB(uint gpio, uint32_t events)
         a++;                                   // incrementa a variavel de verificação
     }
 }
+*/
