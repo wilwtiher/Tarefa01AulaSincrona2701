@@ -24,6 +24,10 @@ int main()
     gpio_set_irq_enabled_with_callback(botao_pinB, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
     while (true) {
+        gpio_put(led_pin, true);
+        sleep_ms(100);
+        gpio_put(led_pin, false);
+        sleep_ms(100);
     }
 }
 void gpio_irq_handler(uint gpio, uint32_t events)
