@@ -1,6 +1,18 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
+#include "hardware/pio.h"
+#include "hardware/clocks.h"
+#include "ws2812.pio.h"
 
+#define IS_RGBW false
+#define NUM_PIXELS 25
+#define WS2812_PIN 7
+
+// Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
+uint8_t led_r = 0; // Intensidade do vermelho
+uint8_t led_g = 0; // Intensidade do verde
+uint8_t led_b = 50; // Intensidade do azul
 
 // Configurações dos pinos 
 const uint led_pin = 13;    //Red=13, Blue=12, Green=11
@@ -39,12 +51,10 @@ void gpio_irq_handler(uint gpio, uint32_t events)
 {
     // Obtém o tempo atual em microssegundos
     uint32_t current_time = to_us_since_boot(get_absolute_time());
-    printf("A = %d\n", a);
     // Verifica se passou tempo suficiente desde o último evento
     if (current_time - last_time > 200000) // 200 ms de debouncing
     {
         last_time = current_time; // Atualiza o tempo do último evento
-        printf("Mudanca de Estado do Led. A = %d\n", a);
         gpio_put(led_pin, !gpio_get(led_pin)); // Alterna o estado
         a++;                                   // incrementa a variavel de verificação
     }
