@@ -10,8 +10,8 @@
 #define WS2812_PIN 7
 
 // Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
-uint8_t led_r = 0; // Intensidade do vermelho
-uint8_t led_g = 0; // Intensidade do verde
+uint8_t led_r = 50; // Intensidade do vermelho
+uint8_t led_g = 50; // Intensidade do verde
 uint8_t led_b = 50; // Intensidade do azul
 
 // Configurações dos pinos 
@@ -22,15 +22,81 @@ const uint botao_pinB = 6;        // Botão A = 5, Botão B = 6 , BotãoJoy = 22
 // Variáveis globais
 static volatile uint a = 1;
 static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (em microssegundos)
+static volatile int contador = 0;
 
 
-// Buffer para armazenar quais LEDs estão ligados matriz 5x5
-bool led_buffer[NUM_PIXELS] = {
-    1, 0, 0, 0, 1, 
-    0, 0, 0, 0, 0, 
-    0, 0, 1, 0, 0, 
-    0, 0, 0, 0, 0, 
-    1, 0, 0, 0, 1
+// Buffer para armazenar quais LEDs serao ligados na matriz de acordo com a variavel contador
+bool led_buffer[10][NUM_PIXELS] = {
+    { // 0
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 1,  
+        1, 0, 0, 0, 1,  
+        1, 0, 0, 0, 1,  
+        0, 1, 1, 1, 0
+    },
+    { // 1
+        0, 0, 1, 0, 0,  
+        0, 1, 1, 0, 0,  
+        0, 0, 1, 0, 0,  
+        0, 0, 1, 0, 0,  
+        0, 1, 1, 1, 0
+    },
+    { // 2
+        1, 1, 1, 1, 1,  
+        0, 0, 0, 0, 1,  
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 0,  
+        1, 1, 1, 1, 1
+    },
+    { // 3
+        1, 1, 1, 1, 1,  
+        0, 0, 0, 0, 1,  
+        0, 0, 1, 1, 1,  
+        0, 0, 0, 0, 1,  
+        1, 1, 1, 1, 1
+    },
+    { // 4
+        0, 0, 1, 0, 0,  
+        0, 1, 1, 0, 0,  
+        1, 0, 1, 0, 0,  
+        1, 1, 1, 1, 1,  
+        0, 0, 1, 0, 0
+    },
+    { // 5
+        1, 1, 1, 1, 1,  
+        1, 0, 0, 0, 0,  
+        1, 1, 1, 0, 0,  
+        0, 0, 0, 1, 0,  
+        1, 1, 1, 0, 0
+    },
+    { // 6
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 0,  
+        1, 1, 1, 0, 0,  
+        1, 0, 0, 1, 0,  
+        0, 1, 1, 0, 0
+    },
+    { // 7
+        1, 1, 1, 1, 1,  
+        0, 0, 0, 1, 0,  
+        0, 0, 1, 0, 0,  
+        0, 1, 0, 0, 0,  
+        1, 0, 0, 0, 0
+    },
+    { // 8
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 1,  
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 1,  
+        0, 1, 1, 1, 0
+    },
+    { // 9
+        0, 1, 1, 1, 0,  
+        1, 0, 0, 0, 1,  
+        0, 1, 1, 1, 1,  
+        0, 0, 0, 0, 1,  
+        0, 1, 1, 1, 0
+    }
 };
 
 static inline void put_pixel(uint32_t pixel_grb)
@@ -52,7 +118,7 @@ void set_one_led(uint8_t r, uint8_t g, uint8_t b)
     // Define todos os LEDs com a cor especificada
     for (int i = 0; i < NUM_PIXELS; i++)
     {
-        if (led_buffer[i])
+        if (led_buffer[contador][i])
         {
             put_pixel(color); // Liga o LED com um no buffer
         }
@@ -65,7 +131,8 @@ void set_one_led(uint8_t r, uint8_t g, uint8_t b)
 
 
 // Prototipo da função de interrupção
-static void gpio_irq_handler(uint gpio, uint32_t events);
+static void gpio_irq_handlerA(uint gpio, uint32_t events);
+static void gpio_irq_handlerB(uint gpio, uint32_t events);
 
 int main()
 {
@@ -85,8 +152,8 @@ int main()
     ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, IS_RGBW);
 
     // Configuração da interrupção com callback
-    gpio_set_irq_enabled_with_callback(botao_pinA, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
-    gpio_set_irq_enabled_with_callback(botao_pinB, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled_with_callback(botao_pinA, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handlerA);
+    gpio_set_irq_enabled_with_callback(botao_pinB, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handlerB);
 
     while (true) {
         gpio_put(led_pin, true);
@@ -95,7 +162,7 @@ int main()
         sleep_ms(100);
     }
 }
-void gpio_irq_handler(uint gpio, uint32_t events)
+void gpio_irq_handlerA(uint gpio, uint32_t events)
 {
     // Obtém o tempo atual em microssegundos
     uint32_t current_time = to_us_since_boot(get_absolute_time());
@@ -103,7 +170,29 @@ void gpio_irq_handler(uint gpio, uint32_t events)
     if (current_time - last_time > 200000) // 200 ms de debouncing
     {
         last_time = current_time; // Atualiza o tempo do último evento
-        gpio_put(led_pin, !gpio_get(led_pin)); // Alterna o estado
+        contador++;
+        if(contador > 9){
+            contador = 9;
+        }else{
+            set_one_led(led_r, led_g, led_b);
+        }
+        a++;                                   // incrementa a variavel de verificação
+    }
+}
+void gpio_irq_handlerB(uint gpio, uint32_t events)
+{
+    // Obtém o tempo atual em microssegundos
+    uint32_t current_time = to_us_since_boot(get_absolute_time());
+    // Verifica se passou tempo suficiente desde o último evento
+    if (current_time - last_time > 200000) // 200 ms de debouncing
+    {
+        last_time = current_time; // Atualiza o tempo do último evento
+        contador--;
+        if(contador < 0){
+            contador = 0;
+        }else{
+            set_one_led(led_r, led_g, led_b);
+        }
         a++;                                   // incrementa a variavel de verificação
     }
 }
