@@ -5,19 +5,18 @@
 #include "hardware/clocks.h"
 #include "ws2812.pio.h"
 
+// Configurações dos pinos
 #define IS_RGBW false
 #define NUM_PIXELS 25
 #define WS2812_PIN 7
-
-// Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
-uint8_t led_r = 20; // Intensidade do vermelho
-uint8_t led_g = 20; // Intensidade do verde
-uint8_t led_b = 20; // Intensidade do azul
-
-// Configurações dos pinos
 const uint led_pin = 13;   // Red=13, Blue=12, Green=11
 const uint botao_pinA = 5; // Botão A = 5, Botão B = 6 , BotãoJoy = 22
 const uint botao_pinB = 6; // Botão A = 5, Botão B = 6 , BotãoJoy = 22
+
+// Variável global para armazenar a cor (Entre 0 e 255 para intensidade)
+uint8_t led_r = 1; // Intensidade do vermelho
+uint8_t led_g = 1; // Intensidade do verde
+uint8_t led_b = 1; // Intensidade do azul
 
 // Variáveis globais
 static volatile uint32_t last_time = 0; // Armazena o tempo do último evento (em microssegundos)
@@ -136,8 +135,34 @@ void set_one_led(uint8_t r, uint8_t g, uint8_t b)
     }
 }
 
-// Prototipo da função de interrupção
-static void gpio_irq_handler(uint gpio, uint32_t events);
+// Funcao da interrupcao
+void gpio_irq_handler(uint gpio, uint32_t events)
+{
+    // Obtém o tempo atual em microssegundos
+    uint32_t current_time = to_us_since_boot(get_absolute_time());
+    // Verifica se passou tempo suficiente desde o último evento
+    if (current_time - last_time > 200000) // 200 ms de debouncing
+    {
+        last_time = current_time; // Atualiza o tempo do último evento
+        if (gpio == botao_pinA)
+        {
+            contador++;
+            if (contador > 9)
+            {
+                contador = 9;
+            }
+        }
+        else
+        {
+            contador--;
+            if (contador < 0)
+            {
+                contador = 0;
+            }
+        }
+        set_one_led(led_r, led_g, led_b);
+    }
+}
 
 int main()
 {
@@ -169,32 +194,5 @@ int main()
         sleep_ms(100);
         gpio_put(led_pin, false);
         sleep_ms(100);
-    }
-}
-void gpio_irq_handler(uint gpio, uint32_t events)
-{
-    // Obtém o tempo atual em microssegundos
-    uint32_t current_time = to_us_since_boot(get_absolute_time());
-    // Verifica se passou tempo suficiente desde o último evento
-    if (current_time - last_time > 200000) // 200 ms de debouncing
-    {
-        last_time = current_time; // Atualiza o tempo do último evento
-        if (gpio == botao_pinA)
-        {
-            contador++;
-            if (contador > 9)
-            {
-                contador = 9;
-            }
-        }
-        else
-        {
-            contador--;
-            if (contador < 0)
-            {
-                contador = 0;
-            }
-        }
-        set_one_led(led_r, led_g, led_b);
     }
 }
